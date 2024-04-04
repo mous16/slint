@@ -371,6 +371,40 @@ SCENARIO("Mapped Model")
     REQUIRE(plus_one_model->row_data(3) == 55);
 }
 
+template<typename ModelData>
+class TestDeferredMapModel : public slint::MapModel<ModelData>
+{
+public:
+    TestDeferredMapModel(bool &initialized, bool &mapped,
+                            std::shared_ptr<slint::Model<ModelData>> source_model)
+        : slint::MapModel<ModelData> { std::move(source_model),
+                                          [&mapped](const ModelData & ) {
+                                              if (!mapped) {
+                                                  mapped = true;
+                                              }
+                                              return true;
+                                          } }
+    {
+        initialized = true;
+    }
+};
+
+SCENARIO("Mapping Model Ensure Deferred")
+{
+    auto source_model =
+            std::make_shared<slint::VectorModel<int>>(std::vector<int> { 0, 1, 2, 3, 4 });
+
+    bool initialized = false;
+    bool mapped = false;
+
+    auto map_model =
+            std::make_shared<TestDeferredMapModel<int>>(initialized, mapped, source_model);
+    REQUIRE(initialized);
+    REQUIRE_FALSE(mapped);
+
+    map_model->row_data(0);
+    REQUIRE(mapped);
+}
 SCENARIO("Sorted Model Insert")
 {
     auto vec_model = std::make_shared<slint::VectorModel<int>>(std::vector<int> { 3, 4, 1, 2 });
